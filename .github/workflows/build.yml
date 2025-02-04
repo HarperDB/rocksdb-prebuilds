@@ -87,9 +87,9 @@ jobs:
         id: archive
         shell: bash
         run: |
-          SOURCE="$HOME/vcpkg/installed/${{ matrix.platform.target }}"
           ARCHIVE="${{ github.workspace }}/rocksdb-${{ needs.check.outputs.version }}-${{ matrix.platform.target }}.tar.xz"
-          tar -cf - $SOURCE | xz -9 > $ARCHIVE
+          cd "$HOME/vcpkg/installed/${{ matrix.platform.target }}"
+          tar -cf - . | xz -9 > $ARCHIVE
           echo "archive=$ARCHIVE" >> $GITHUB_OUTPUT
 
       - name: Upload artifact
@@ -115,6 +115,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*.tar.xz
+          body: |
+            Automated prebuilds for RocksDB v${{ needs.check.outputs.version }}
           name: RocksDB v${{ needs.check.outputs.version }}
           tag_name: v${{ needs.check.outputs.version }}
           token: ${{ secrets.GH_TOKEN }}
