@@ -1,0 +1,120 @@
+name: Automated RocksDB Builds
+
+on:
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Check for new release
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check-release.outputs.should_build }}
+      version: ${{ steps.check-release.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install vcpkg
+        shell: bash
+        run: |
+          export VCPKG_ROOT="$HOME/vcpkg"
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          $VCPKG_ROOT/bootstrap-vcpkg.sh
+          $VCPKG_ROOT/vcpkg integrate install
+
+      - name: Checking if we should build
+        id: check-release
+        shell: bash
+        run: |
+          URL="https://api.github.com/repos/harperdb/rocksdb-prebuilds/releases/latest"
+          CURRENT=$(curl -s -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -X GET "$URL" | jq -r '.tag_name' | tr -d 'v')
+          LATEST=$(jq -r ".versions[0].version" "$HOME/vcpkg/versions/r-/rocksdb.json")
+          echo "version=$LATEST" >> $GITHUB_OUTPUT
+          if [[ "${LATEST}" != "${CURRENT}" ]]; then
+            echo "Found new release: ${LATEST} (current: ${CURRENT})"
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          else
+            echo "No new releases"
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    name: Build
+    needs: [check]
+    if: ${{ needs.check.outputs.should_build == 'true' }}
+    strategy:
+      fail-fast: true
+      matrix:
+        platform:
+          - runner: macos-latest
+            target: arm64-osx
+          - runner: macos-latest
+            target: x64-osx
+          - runner: ubuntu-latest
+            target: x64-linux
+          - runner: windows-latest
+            target: x64-windows
+          - runner: windows-latest
+            target: arm64-windows
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install vcpkg
+        shell: bash
+        run: |
+          export VCPKG_ROOT="$HOME/vcpkg"
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          $VCPKG_ROOT/bootstrap-vcpkg.sh
+          $VCPKG_ROOT/vcpkg integrate install
+
+      - name: Configure static build
+        shell: bash
+        run: |
+          echo "set(VCPKG_LIBRARY_LINKAGE static)" > temp.txt
+          cat "$HOME/vcpkg/ports/rocksdb/portfile.cmake" >> temp.txt
+          mv -f temp.txt "$HOME/vcpkg/ports/rocksdb/portfile.cmake"
+
+      - name: Build RocksDB
+        shell: bash
+        run: |
+          $HOME/vcpkg/vcpkg install rocksdb:${{ matrix.platform.target }}
+
+      - name: Create archive
+        id: archive
+        shell: bash
+        run: |
+          SOURCE="$HOME/vcpkg/installed/${{ matrix.platform.target }}"
+          ARCHIVE="${{ github.workspace }}/rocksdb-${{ needs.check.outputs.version }}-${{ matrix.platform.target }}.tar.xz"
+          tar -cf - $SOURCE | xz -9 > $ARCHIVE
+          echo "archive=$ARCHIVE" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rocksdb-${{ needs.check.outputs.version }}-${{ matrix.platform.target }}
+          path: ${{ steps.archive.outputs.archive }}
+
+  release:
+    name: Release
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.tar.xz
+          name: RocksDB v${{ needs.check.outputs.version }}
+          tag_name: v${{ needs.check.outputs.version }}
+          token: ${{ secrets.GH_TOKEN }}
