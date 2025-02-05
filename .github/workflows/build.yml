@@ -54,6 +54,8 @@ jobs:
             target: x64-osx
           - runner: ubuntu-latest
             target: x64-linux
+          - runner: ubuntu-24.04-arm
+            target: arm64-linux
           - runner: windows-latest
             target: x64-windows
           - runner: windows-latest
