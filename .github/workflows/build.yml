@@ -82,6 +82,8 @@ jobs:
 
       - name: Build RocksDB
         shell: bash
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
         run: |
           $HOME/vcpkg/vcpkg install rocksdb:${{ matrix.platform.target }}
 
