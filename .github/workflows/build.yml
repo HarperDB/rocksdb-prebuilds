@@ -117,7 +117,6 @@ jobs:
 
       - name: Create release
         uses: softprops/action-gh-release@v2
-        id: create-release
         with:
           files: artifacts/**/*.tar.xz
           body: |
@@ -147,7 +146,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "${{ steps.create-release.outputs.release_url }}"
+                    "text": "https://github.com/harperdb/rocksdb-prebuilds/releases/tag/v${{ needs.check.outputs.version }}"
                   }
                 }
               ]
