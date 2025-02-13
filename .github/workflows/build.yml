@@ -117,6 +117,7 @@ jobs:
 
       - name: Create release
         uses: softprops/action-gh-release@v2
+        id: create-release
         with:
           files: artifacts/**/*.tar.xz
           body: |
@@ -124,3 +125,30 @@ jobs:
           name: RocksDB v${{ needs.check.outputs.version }}
           tag_name: v${{ needs.check.outputs.version }}
           token: ${{ secrets.GH_TOKEN }}
+
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel_id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload: |
+            {
+              "text": "New RocksDB prebuild: v${{ needs.check.outputs.version }}",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "New RocksDB prebuild: v${{ needs.check.outputs.version }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ steps.create-release.outputs.release_url }}"
+                  }
+                }
+              ]
+            }
+
