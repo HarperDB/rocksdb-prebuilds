@@ -133,7 +133,7 @@ jobs:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload: |
             {
-              "channel_id": "${{ secrets.SLACK_CHANNEL_ID }}",
+              "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
               "text": "New RocksDB prebuild: v${{ needs.check.outputs.version }}",
               "blocks": [
                 {
