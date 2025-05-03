@@ -160,3 +160,8 @@ jobs:
           event-type: new-rocksdb-prebuild
           repository: harperdb/rocksdb-js
           token: ${{ secrets.GH_TOKEN }}
+          client-payload: |
+            {
+              "url": "https://github.com/harperdb/rocksdb-prebuilds/releases/tag/v${{ needs.check.outputs.version }}",
+              "version": "${{ needs.check.outputs.version }}"
+            }
