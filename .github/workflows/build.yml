@@ -121,6 +121,8 @@ jobs:
           files: artifacts/**/*.tar.xz
           body: |
             Automated prebuilds for RocksDB v${{ needs.check.outputs.version }}
+
+            Release notes: https://github.com/facebook/rocksdb/releases/tag/v${{ needs.check.outputs.version }}
           name: RocksDB v${{ needs.check.outputs.version }}
           tag_name: v${{ needs.check.outputs.version }}
           token: ${{ secrets.GH_TOKEN }}
